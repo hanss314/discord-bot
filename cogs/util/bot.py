@@ -11,6 +11,7 @@ import ruamel.yaml as yaml
 import discord
 
 from .data_uploader import DataUploader
+from .checks import right_channel
 
 
 class HelperBodge():
@@ -21,6 +22,8 @@ class HelperBodge():
 
 
 class HTSTEMBote(commands.AutoShardedBot):
+    class SilentCheckFailure(commands.CheckFailure): pass
+    
     def __init__(self, log_file=None, *args, **kwargs):
         self.debug = False
         self.config = {}
@@ -71,19 +74,6 @@ class HTSTEMBote(commands.AutoShardedBot):
         if isinstance(channel, discord.DMChannel):
             await self.process_commands(message)
             return
-            
-        channel_ids = self.config.get('ids', {})
-        allowed = channel_ids.get('allowed_channels', None)
-        blocked = channel_ids.get('blocked_channels', [])
-
-        if allowed is not None:
-            if channel.id not in allowed:
-                if not (message.content.startswith('sb?memo ') or message.content.startswith('sb?remind ')):
-                    return
-
-        if channel.id in blocked:
-            if not (message.content.startswith('sb?memo ') or message.content.startswith('sb?remind ')):
-                return
 
         await self.process_commands(message)
 
@@ -148,8 +138,10 @@ class HTSTEMBote(commands.AutoShardedBot):
                 self.logger.error(''.join(lines))
                 await self.notify_devs(lines, ctx.message)
 
-        elif isinstance(exception, commands.CheckFailure):
-            await ctx.send('You can\'t do that.')
+
+        if isinstance(exception, commands.CheckFailure):
+            if not isinstance(exception, self.SilentCheckFailure):
+                await ctx.send('You can\'t do that.')
         elif isinstance(exception, commands.CommandNotFound):
             pass
         elif isinstance(exception, commands.UserInputError):
@@ -191,7 +183,8 @@ class HTSTEMBote(commands.AutoShardedBot):
 
         token = self.config['token']
         cogs = self.config.get('cogs', [])
-
+        self.add_check(right_channel)
+        
         for cog in cogs:
             try:
                 self.load_extension(cog)
