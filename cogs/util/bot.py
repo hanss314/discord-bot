@@ -22,6 +22,8 @@ class HelperBodge():
 
 
 class HTSTEMBote(commands.AutoShardedBot):
+    class SilentCheckFailure(commands.CheckFailure): pass
+    
     def __init__(self, log_file=None, *args, **kwargs):
         self.debug = False
         self.config = {}
@@ -133,7 +135,8 @@ class HTSTEMBote(commands.AutoShardedBot):
             return
 
         if isinstance(exception, commands.CheckFailure):
-            await ctx.send('You can\'t do that.')
+            if not isinstance(exception, self.SilentCheckFailure):
+                await ctx.send('You can\'t do that.')
         elif isinstance(exception, commands.CommandNotFound):
             pass
         elif isinstance(exception, commands.UserInputError):
